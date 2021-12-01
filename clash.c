@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#define UserInputLength 1337
+#define UserInputLength 1337 
 
   
 static void error(char*);
