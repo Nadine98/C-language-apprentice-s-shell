@@ -4,71 +4,116 @@
 #include <unistd.h>
 #include <errno.h>
 
-#define UserInputLength 1337
-#define NumberOfArguments 3
+#define UserInputLength 50
 
 
 static void error(char*);
 static void getPrompt();
-static void get_Arguments();
+static void getArguments();
+static char ** createArray(unsigned int );
 
 //----------------------------------------------------------------------
 
 int main(int argc, char*argv[]){
 
 	getPrompt();
-	get_Arguments();
+	getArguments();
 
 }
 
 //----------------------------------------------------------------------
 
 
+static char **createArray(unsigned int size){
+	
+	char **arguments= (char **)malloc (size *sizeof(*arguments));
+	
+	if (arguments==NULL)
+		error("malloc");
+	
+	
+	for (int i=0; i< size; i++){
+		
+		arguments[i]=(char *) calloc(UserInputLength, sizeof(arguments[i]));
+		
+		if (arguments[i]==NULL)
+			error("calloc");
+	
+	}
+	
+	return arguments;
+	
 
-static void get_Arguments(){
+}
+
+static void getArguments(){
+	
+	int arraySize = 5;
+	int numberOfArguments=0;
+	char c;
 	
 	char userInput[UserInputLength+1];
-	char numberOfArguments = NumberOfArguments;
-	
-	if (fgets(userInput, UserInputLength, stdin) == NULL)
-		error("fegts");
+	char **arguments=createArray(arraySize);
 	
 	
-	// Damit nicht beim Schreiben eine Zeile zu viel entsteht
-	if (userInput[strlen(userInput)-1]== 10)
-		strtok(userInput, "\n"); 
 
-	int i=0; 
-	char **argv= (char **) malloc(numberOfArguments*sizeof(argv));
-	
-	argv[0]=strtok(userInput, " \t");
-	
-	while((argv[i++]=strtok(NULL, " \t"))!= NULL){
+	// Reading from Stdin --> Using maxLength 1337+2 for the valididation of the input length 
+	if (fgets(userInput, UserInputLength+2, stdin) == NULL){
+		error("fegts");
+	}
 		
-		if(i< NumberOfArguments-1 ){
-			printf("Zu klein\n");
-			numberOfArguments=numberOfArguments *2;
-			argv= realloc(argv,numberOfArguments);
-			if (argv==NULL)
+	
+	// Input has a size greater than 1337 then the input is too long --> Ignoring the following character
+	if (strlen(userInput)> UserInputLength){
+		
+		while((c=getchar()) != '\n' && c!=EOF){
+			continue;
+		}
+		userInput[UserInputLength]='\0';
+		
+	}else{
+		userInput[strlen(userInput)-1]='\0';
+	}
+	
+	
+ 
+	// Spiliting up the input 
+	
+	arguments[numberOfArguments]=strtok(userInput, " \t");
+	numberOfArguments++;
+	
+	
+	while((arguments[numberOfArguments++]=strtok(NULL, " \t"))!= NULL){
+
+		// Array has a small size --> realloc
+		if(numberOfArguments== arraySize ){
+			arraySize=arraySize *2;
+			arguments=(char **) realloc(arguments,arraySize*sizeof(*arguments));
+			if (arguments==NULL)
 				error("realloc");
 			
-			for (int j= i+1; j< NumberOfArguments ; j++){
-				argv[j]=calloc(200,sizeof(argv[j]));
-				if (argv[j]==NULL)
+			for (int i= numberOfArguments+1; i< arraySize ; i++){
+				arguments[i]=calloc(200,sizeof(arguments[i]));
+				if (arguments[i]==NULL)
 					error("calloc");
 			
-			}
+			}	
 		
 		}
 
-	
 	}
 	
-	for (int j=0; j<i-1; j++){
-		free(argv[j]);
+	numberOfArguments--; 
+	
+	for(int i =0; i==numberOfArguments; i++)
+		printf("%s\n",arguments[i]);
+	
+	
+	for (int j=0; j==numberOfArguments; j++){
+		free(arguments[j]);
 	}
 	
-	free(argv);
+	free(arguments);
 	
 }
 
