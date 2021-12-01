@@ -108,7 +108,7 @@ static void getArguments(){
 	for(int i =0; i==numberOfArguments; i++)
 		printf("%s\n",arguments[i]);
 	
-	
+
 	for (int j=0; j==numberOfArguments; j++){
 		free(arguments[j]);
 	}
