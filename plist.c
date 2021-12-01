@@ -92,5 +92,5 @@ int removeElement(pid_t pid, char *buf, size_t buflen) {
 	}
 
 	/* PID not found */
-	return -1;
+	return -1; 
 }
