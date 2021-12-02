@@ -5,55 +5,46 @@
 #include <errno.h>
 
 #define UserInputLength 1337 
-
+#define ArgumentLength 80
+#define MaxArraySize (UserInputLength/ArgumentLength)
   
 static void error(char*);
 static void getPrompt();
-static void getArguments();
-static char ** createArray(unsigned int );
+static void getArguments(char [MaxArraySize][ArgumentLength], int *);
 
 //----------------------------------------------------------------------
 
 int main(int argc, char*argv[]){
+	
+	char args[MaxArraySize][ArgumentLength];
 
-	getPrompt();
-	getArguments();
+	
+	int numberArgs;
+	
 
+		getPrompt();
+		getArguments(args,&numberArgs);
+		
+		
+		
+		for(int i =0; i <= numberArgs; i++)
+			printf("%s\n",args[i]);
+	
+	
 }
 
 //----------------------------------------------------------------------
 
 
-static char **createArray(unsigned int size){
-	
-	char **arguments= (char **)malloc (size *sizeof(*arguments));
-	
-	if (arguments==NULL)
-		error("malloc");
-	
-	
-	for (int i=0; i< size; i++){
-		
-		arguments[i]=(char *) calloc(UserInputLength, sizeof(arguments[i]));
-		
-		if (arguments[i]==NULL)
-			error("calloc");
-	
-	}
-	
-	return arguments;
+
+static void getArguments(char args[MaxArraySize][ArgumentLength], int *number){
 	
 
-}
-
-static void getArguments(){
-	
-	int arraySize = 5;
 	int numberOfArguments=0;
 	char c;
 	
-	char userInput[UserInputLength+1];
-	char **arguments=createArray(arraySize);
+	char userInput[UserInputLength+2];
+	
 	
 	
 
@@ -78,42 +69,26 @@ static void getArguments(){
 	
  
 	// Spiliting up the input 
+	char *temp=strtok(userInput, " \t");
+	strcpy(args[numberOfArguments++],temp);
 	
-	arguments[numberOfArguments]=strtok(userInput, " \t");
-	numberOfArguments++;
 	
 	
-	while((arguments[numberOfArguments++]=strtok(NULL, " \t"))!= NULL){
-
-		// Array has a small size --> realloc
-		if(numberOfArguments== arraySize ){
-			arraySize=arraySize *2;
-			arguments=(char **) realloc(arguments,arraySize*sizeof(*arguments));
-			if (arguments==NULL)
-				error("realloc");
-			
-			for (int i= numberOfArguments+1; i< arraySize ; i++){
-				arguments[i]=calloc(200,sizeof(arguments[i]));
-				if (arguments[i]==NULL)
-					error("calloc");
-			
-			}	
+	while((temp=strtok(NULL, " \t"))!= NULL){
 		
+		strcpy(args[numberOfArguments++],temp);
+		
+		
+		if (numberOfArguments == MaxArraySize){
+			if(fprintf(stderr, "Too many arguments") < 0)
+				error("fprintf");
+			exit(EXIT_FAILURE);
 		}
 
 	}
 	
 	numberOfArguments--; 
-	
-	for(int i =0; i==numberOfArguments; i++)
-		printf("%s\n",arguments[i]);
-	
-
-	for (int j=0; j==numberOfArguments; j++){
-		free(arguments[j]);
-	}
-	
-	free(arguments);
+	*number =numberOfArguments;
 	
 }
 
