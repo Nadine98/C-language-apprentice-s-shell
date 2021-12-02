@@ -6,7 +6,7 @@
 
 #define UserInputLength 1337 
 #define ArgumentLength 80
-#define MaxArraySize (UserInputLength/ArgumentLength)
+#define MaxArraySize ((UserInputLength/ArgumentLength) +1)
   
 static void error(char*);
 static void getPrompt();
@@ -17,19 +17,46 @@ static void getArguments(char [MaxArraySize][ArgumentLength], int *);
 int main(int argc, char*argv[]){
 	
 	char args[MaxArraySize][ArgumentLength];
+	char **arguments=(char**)malloc (MaxArraySize*sizeof(arguments)); 
 
-	
 	int numberArgs;
 	
-
-		getPrompt();
-		getArguments(args,&numberArgs);
+		while(1){
+			getPrompt();
+			getArguments(args,&numberArgs);
+			
+			
+			for(int i =0; i < numberArgs; i++)
+				arguments[i]=args [i];
+				
+			pid_t pid= fork(); 
+		
+			if (pid < 0){
+				error("fork");
+			}else if (pid > 0){
+				
+				//printf("Elternprozess");
+				
+			}else{
+				
+				printf("Kindprozess");
+				// Load a new program in the child prozess
+				// nameOfCommand, agruments
+				execvp(arguments[0], arguments);
+				
+				// in the case of failure excex return
+				error("execvp");
+			}
+			
+				
+		}
 		
 		
-		
-		for(int i =0; i <= numberArgs; i++)
-			printf("%s\n",args[i]);
-	
+		for(int i =0; i <MaxArraySize; i++)
+				free(arguments[i]);
+				
+		free(arguments);
+			
 	
 }
 
@@ -41,9 +68,8 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number){
 	
 
 	int numberOfArguments=0;
-	char c;
-	
 	char userInput[UserInputLength+2];
+	char c;
 	
 	
 	
@@ -70,26 +96,22 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number){
  
 	// Spiliting up the input 
 	char *temp=strtok(userInput, " \t");
-	strcpy(args[numberOfArguments++],temp);
-	
-	
+	snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp );
 	
 	while((temp=strtok(NULL, " \t"))!= NULL){
 		
-		strcpy(args[numberOfArguments++],temp);
-		
-		
-		if (numberOfArguments == MaxArraySize){
+		snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp );
+
+		// Exceed maximal Array Size --> too many Arguments 
+		if (numberOfArguments == MaxArraySize-1){
 			if(fprintf(stderr, "Too many arguments") < 0)
 				error("fprintf");
 			exit(EXIT_FAILURE);
 		}
 
-	}
+	} 
 	
-	numberOfArguments--; 
-	*number =numberOfArguments;
-	
+	*number = numberOfArguments;
 }
 
 
