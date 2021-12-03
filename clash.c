@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/wait.h>
 
 #define UserInputLength 1337 
 #define ArgumentLength 80
@@ -10,22 +11,27 @@
   
 static void error(char*);
 static void getPrompt();
-static void getArguments(char [MaxArraySize][ArgumentLength], int *);
+static void getArguments(char [MaxArraySize][ArgumentLength], int *, char *);
 
 //----------------------------------------------------------------------
 
 int main(int argc, char*argv[]){
 	
 	char args[MaxArraySize][ArgumentLength];
-	char **arguments=(char**)malloc (MaxArraySize*sizeof(arguments)); 
+	char **arguments=(char**)calloc(MaxArraySize,sizeof(arguments)); 
+	char userInput [UserInputLength];
 
-	int numberArgs;
+	int numberArgs =0;
 	
 		while(1){
 			getPrompt();
-			getArguments(args,&numberArgs);
+				getArguments(args,&numberArgs, userInput);
 			
 			
+			if (numberArgs==0){
+				continue;
+			}
+				
 			for(int i =0; i < numberArgs; i++)
 				arguments[i]=args [i];
 				
@@ -36,6 +42,20 @@ int main(int argc, char*argv[]){
 			}else if (pid > 0){
 				
 				//printf("Elternprozess");
+				int status;
+				
+				if ((waitpid (pid, &status, 0))== -1){
+					error("waitpid");
+				}
+				
+				if (WIFEXITED(status)){
+				
+					printf("Exit Status: [ %s ] = %d\n", userInput, WEXITSTATUS(status));
+					fflush(stdout);
+					
+				}
+				
+			
 				
 			}else{
 				
@@ -52,7 +72,7 @@ int main(int argc, char*argv[]){
 		}
 		
 		
-		for(int i =0; i <MaxArraySize; i++)
+		for(int i =0; i <=numberArgs; i++)
 				free(arguments[i]);
 				
 		free(arguments);
@@ -64,7 +84,7 @@ int main(int argc, char*argv[]){
 
 
 
-static void getArguments(char args[MaxArraySize][ArgumentLength], int *number){
+static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, char *input){
 	
 
 	int numberOfArguments=0;
@@ -88,19 +108,30 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number){
 		}
 		userInput[UserInputLength]='\0';
 		
-	}else{
+	}else if( strlen(userInput)> 2 && strlen(userInput)< UserInputLength) {
 		userInput[strlen(userInput)-1]='\0';
+	}else{
+		numberOfArguments = -1; 
+		
 	}
-	
+
+
+	if (sprintf(input,"%s", userInput )< 0){
+		error("sprintf");
+	}
 	
  
 	// Spiliting up the input 
 	char *temp=strtok(userInput, " \t");
-	snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp );
+	if(snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp )< 0){
+		error("snprintf");
+	}
 	
 	while((temp=strtok(NULL, " \t"))!= NULL){
 		
-		snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp );
+		if (snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp ) < 0){
+			error("snprintf");
+		}
 
 		// Exceed maximal Array Size --> too many Arguments 
 		if (numberOfArguments == MaxArraySize-1){
