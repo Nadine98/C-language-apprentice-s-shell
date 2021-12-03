@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include "plist.h"
 
 #define UserInputLength 1337 
 #define ArgumentLength 80
@@ -12,6 +13,8 @@
 static void error(char*);
 static void getPrompt();
 static void getArguments(char [MaxArraySize][ArgumentLength], int *, char *);
+static void parentProcess(pid_t ,int ,char *);
+static void zombie();
 
 //----------------------------------------------------------------------
 
@@ -22,46 +25,57 @@ int main(int argc, char*argv[]){
 	char userInput [UserInputLength];
 
 	int numberArgs =0;
+	int background =0;
 	
+	// for the option of the waitid function
 		while(1){
+			
+		
+			zombie();
 			getPrompt();
-				getArguments(args,&numberArgs, userInput);
+			getArguments(args,&numberArgs, userInput);
 			
 			
-			if (numberArgs==0){
+			// if a blank line appears then continue with the next prompt 
+			if (numberArgs==0 && (strcmp(args[numberArgs],"\0") == 0)){
+				printf("hier");
 				continue;
 			}
+			
+			
+			if((strcmp(args[numberArgs-1],"&")) ==0){
 				
+				background=1;
+				char *c=strchr(userInput,'&');
+				*(c-1)='\0';
+				
+				if(sprintf(args[numberArgs-1]," ") < 0)
+					error("sprintf");
+					
+				numberArgs=numberArgs-1;
+			}
+			
+			// 	copy the arguments in array of pointer for the exe function 
 			for(int i =0; i < numberArgs; i++)
 				arguments[i]=args [i];
-				
+			
+			// Creating the child process	
 			pid_t pid= fork(); 
-		
+			
+			
+			// Error 
 			if (pid < 0){
 				error("fork");
-			}else if (pid > 0){
-				
-				//printf("Elternprozess");
-				int status;
-				
-				if ((waitpid (pid, &status, 0))== -1){
-					error("waitpid");
-				}
-				
-				if (WIFEXITED(status)){
-				
-					printf("Exit Status: [ %s ] = %d\n", userInput, WEXITSTATUS(status));
-					fflush(stdout);
-					
-				}
-				
+			}
+			// Parent process 
+			else if (pid > 0){
+				parentProcess(pid,background,userInput );
+				background=0;
+			}
 			
-				
-			}else{
-				
-				printf("Kindprozess");
+			// Child process 
+			else{
 				// Load a new program in the child prozess
-				// nameOfCommand, agruments
 				execvp(arguments[0], arguments);
 				
 				// in the case of failure excex return
@@ -83,6 +97,70 @@ int main(int argc, char*argv[]){
 //----------------------------------------------------------------------
 
 
+// Muss noch modifiziert werden 
+static void zombie (){
+	int bgStatus;
+	pid_t bgpid;
+	
+	//Zombies aufräumen
+			while (1){
+			
+				bgpid=waitpid(-1, &bgStatus,WNOHANG );
+				
+				
+				// status is not available for any process --> Continue with printing prompt
+				if(bgpid == 0){
+					break;
+				}
+				// error occurs 
+				else if(bgpid < 0){
+					error("waitpid");
+				}
+				
+				//status is available for a background process
+				else{
+					char command[UserInputLength+1];
+					
+					if((removeElement(bgpid,command,UserInputLength+1)) < 0){
+						continue;
+					}
+					
+					if (WIFEXITED(bgStatus)){
+						printf("Exit Status: [%s] = %d\n", command, WEXITSTATUS(bgStatus));
+
+					}
+					
+				}
+			}
+}
+
+static void parentProcess(pid_t pid, int background,char *commandLine){
+
+
+	// Foreground process
+	if(!background ){
+
+		int status;
+		if ((waitpid (pid, &status, 0))== -1){
+			error("waitpid");
+		}	
+		
+		if (WIFEXITED(status)){
+			printf("Exit Status: [%s] = %d\n", commandLine, WEXITSTATUS(status));
+		}
+	}
+	// Background process
+	else{
+		
+		// Insert the process in the list
+		int x=insertElement(pid, commandLine);
+		
+		if(x==-2){
+			error("insertElement - full memeory");
+		}
+		
+	}	
+}
 
 static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, char *input){
 	
@@ -96,9 +174,14 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 
 	// Reading from Stdin --> Using maxLength 1337+2 for the valididation of the input length 
 	if (fgets(userInput, UserInputLength+2, stdin) == NULL){
+		if(feof(stdin)>0){
+			printf("close clash \n");
+			exit(EXIT_SUCCESS);
+		}
 		error("fegts");
 	}
-		
+	
+	fflush (stdin);	
 	
 	// Input has a size greater than 1337 then the input is too long --> Ignoring the following character
 	if (strlen(userInput)> UserInputLength){
@@ -108,7 +191,7 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 		}
 		userInput[UserInputLength]='\0';
 		
-	}else if( strlen(userInput)> 2 && strlen(userInput)< UserInputLength) {
+	}else if( strlen(userInput)> 1 && strlen(userInput)< UserInputLength) {
 		userInput[strlen(userInput)-1]='\0';
 	}else{
 		numberOfArguments = -1; 
