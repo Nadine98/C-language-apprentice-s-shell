@@ -28,7 +28,6 @@ int main(int argc, char*argv[]){
 	int numberArgs =0;
 	int background =0;
 	
-	// for the option of the waitid function
 	while(1){
 		
 		zombie();
@@ -41,7 +40,7 @@ int main(int argc, char*argv[]){
 			continue;
 		
 		
-		// Checking if the process is set in the background
+		// Checking if the process is put in the background
 		if((strcmp(args[numberArgs-1],"&")) ==0){
 			
 			background=1;
@@ -55,26 +54,26 @@ int main(int argc, char*argv[]){
 		
 		// copy the arguments in an array of pointer for the exec function 
 		for(int i =0; i < numberArgs; i++)
-			arguments[i]=args [i];
+			arguments[i]=args[i];
 			
 			
-		// Creating the child process	
+		// Creating a child process	
 		pid_t pid= fork(); 
 		
 		
-		// Error 
+		// Error occurs by the execution of fork
 		if (pid < 0){
 			error("fork");
 		}
-		// Parent process 
+		// Being in the parent process 
 		else if (pid > 0){
 			parentProcess(pid,background,userInput );
 			background=0;
 		}
 		
-		// Child process 
+		// Being in the child process 
 		else{
-			// Checking if the command is cd 
+			// Checking if the cd-command is used
 			if((strcmp(arguments[0], "cd")) == 0){
 				if ( (chdir(args[1])) == -1 ){
 					error("chdir");
@@ -82,7 +81,7 @@ int main(int argc, char*argv[]){
 				exit(EXIT_SUCCESS);
 			}
 			
-			// Checking if the command is jobs
+			// Checking if the jobs-command is used
 			else if ((strcmp(arguments[0], "jobs")) == 0){
 				walkList(callback);
 			}
@@ -90,8 +89,6 @@ int main(int argc, char*argv[]){
 			else{
 				// Load a new program in the child prozess
 				execvp(arguments[0], arguments);
-				
-				// in the case of failure excex return
 				error("execvp");
 			}
 		 
@@ -132,12 +129,12 @@ static void zombie (){
 			if(bgpid == 0){
 				break;
 			}
-			// Error occurs --> There isn't an exsting process or error in the execution of the process
+			// Error occurs
 			else if(bgpid < 0){
-				//no child process exists 
+				// no child process exists 
 				if (errno == ECHILD)
 					break;
-				//  erro during the process execution 
+				// error during the process execution 
 				error("waitpid");
 			}
 			
@@ -192,7 +189,6 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	int numberOfArguments=0;
 	char userInput[UserInputLength+2];
 	char c;
-	
 	
 	
 
@@ -255,24 +251,30 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 
 static void getPrompt(){
 	
-	unsigned int dirLength=5;
+    unsigned int dirLength=10;
     char *dir=NULL;
    
  
     while(1){
-		
+		// fetch the directory
 		char *tmp=getcwd(dir,dirLength);
-		
+
+		// Checking if the lenght of the directory is too long for dir 
 		if ((tmp==NULL) && errno == ERANGE){
-	
+
 				dirLength= dirLength*2;
 				dir = realloc(dir,dirLength);
 				if (dir ==NULL)
 					error("realloc");
-				
-		}else if (tmp==NULL && errno != ERANGE){
+		}
+	    
+		// Checking if an error occurs during the execution of getcwd    
+		else if (tmp==NULL && errno != ERANGE){
 			error("getcwd");
-		}else{
+		}
+	    
+	    	// No problems during the execution of getcwd
+	    	else{
 			break;
 		}
 		
@@ -284,6 +286,7 @@ static void getPrompt(){
 	free(dir);
 }
 
+// Error handling
 static void error(char *msg){
 	perror(msg);
 	exit(EXIT_FAILURE);
