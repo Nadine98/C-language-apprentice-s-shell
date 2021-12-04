@@ -108,12 +108,16 @@ static void zombie (){
 				bgpid=waitpid(-1, &bgStatus,WNOHANG );
 				
 				
-				// status is not available for any process --> Continue with printing prompt
+				// status is not available for any existing process --> Continue with printing prompt
 				if(bgpid == 0){
 					break;
 				}
-				// error occurs 
+				// Error occurs --> There isn't an exsting process or error in the execution of the process
 				else if(bgpid < 0){
+					//no child process exists 
+					if (errno == ECHILD)
+						break;
+					//  erro during the process execution 
 					error("waitpid");
 				}
 				
