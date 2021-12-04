@@ -22,7 +22,11 @@ static int callback(pid_t, const char *);
 int main(int argc, char*argv[]){
 	
 	char args[MaxArraySize][ArgumentLength];
+	
 	char **arguments=(char**)calloc(MaxArraySize,sizeof(arguments)); 
+	if (arguments ==NULL)
+		error("calloc");
+		
 	char userInput [UserInputLength];
 
 	int numberArgs =0;
@@ -36,8 +40,10 @@ int main(int argc, char*argv[]){
 		
 		
 		// if a blank line appears then continue with the next prompt 
-		if (numberArgs<2)
+		if (numberArgs<1){
 			continue;
+		}
+			
 		
 		
 		// Checking if the process is put in the background
@@ -57,11 +63,34 @@ int main(int argc, char*argv[]){
 			arguments[i]=args[i];
 			
 			
+		// Checking if the cd-command is used
+		if((strcmp(arguments[0], "cd")) == 0){
+
+			if(chdir(arguments[1]) == -1){
+				if(errno =ENOENT){
+					fprintf(stderr, "There is not a path with this name\n");
+				}else{
+				error("chdir");
+				}
+			}
+
+			continue;
+		}
+		
+		
+		// Checking if the jobs-command is used
+		else if ((strcmp(arguments[0], "jobs")) == 0){
+			walkList(callback);
+			continue;
+		}
+		
+			
+			
 		// Creating a child process	
 		pid_t pid= fork(); 
 		
 		
-		// Error occurs by the execution of fork
+		
 		if (pid < 0){
 			error("fork");
 		}
@@ -73,35 +102,26 @@ int main(int argc, char*argv[]){
 		
 		// Being in the child process 
 		else{
-			// Checking if the cd-command is used
-			if((strcmp(arguments[0], "cd")) == 0){
-				if ( (chdir(args[1])) == -1 ){
-					error("chdir");
-				}
-				exit(EXIT_SUCCESS);
-			}
 			
-			// Checking if the jobs-command is used
-			else if ((strcmp(arguments[0], "jobs")) == 0){
-				walkList(callback);
-			}
+			// cleaning up the array for commands without arguments --> like ls, clear, ..
+			if(numberArgs==1 && arguments[numberArgs]!=NULL)
+				arguments[numberArgs]=NULL;
+
+			execvp(arguments[0], arguments);
+			error("execvp");
 			
-			else{
-				// Load a new program in the child prozess
-				execvp(arguments[0], arguments);
-				error("execvp");
-			}
-		 
 		}
+		
+
 		
 			
 	}
 	
-		
 	for(int i =0; i <=numberArgs; i++)
-			free(arguments[i]);
+		free(arguments[i]);
 	free(arguments);
-		
+	
+	
 	
 }
 
