@@ -15,6 +15,7 @@ static void getPrompt();
 static void getArguments(char [MaxArraySize][ArgumentLength], int *, char *);
 static void parentProcess(pid_t ,int ,char *);
 static void zombie();
+static int callback(pid_t, const char *);
 
 //----------------------------------------------------------------------
 
@@ -28,52 +29,64 @@ int main(int argc, char*argv[]){
 	int background =0;
 	
 	// for the option of the waitid function
-		while(1){
-			
+	while(1){
 		
-			zombie();
-			getPrompt();
-			getArguments(args,&numberArgs, userInput);
+		zombie();
+		getPrompt();
+		getArguments(args,&numberArgs, userInput);
+		
+		
+		// if a blank line appears then continue with the next prompt 
+		if (numberArgs<2)
+			continue;
+		
+		
+		// Checking if the process is set in the background
+		if((strcmp(args[numberArgs-1],"&")) ==0){
 			
+			background=1;
 			
-			// if a blank line appears then continue with the next prompt 
-			if (numberArgs==0 && (strcmp(args[numberArgs],"\0") == 0)){
-				printf("hier");
-				continue;
-			}
-			
-			
-			if((strcmp(args[numberArgs-1],"&")) ==0){
+			char *c=strchr(userInput,'&');
+			*(c-1)='\0';
 				
-				background=1;
-				char *c=strchr(userInput,'&');
-				*(c-1)='\0';
-				
-				if(sprintf(args[numberArgs-1]," ") < 0)
-					error("sprintf");
-					
-				numberArgs=numberArgs-1;
+			numberArgs=numberArgs-1;
+		}
+		
+		
+		// copy the arguments in an array of pointer for the exec function 
+		for(int i =0; i < numberArgs; i++)
+			arguments[i]=args [i];
+			
+			
+		// Creating the child process	
+		pid_t pid= fork(); 
+		
+		
+		// Error 
+		if (pid < 0){
+			error("fork");
+		}
+		// Parent process 
+		else if (pid > 0){
+			parentProcess(pid,background,userInput );
+			background=0;
+		}
+		
+		// Child process 
+		else{
+			// Checking if the command is cd 
+			if((strcmp(arguments[0], "cd")) == 0){
+				if ( (chdir(args[1])) == -1 ){
+					error("chdir");
+				}
+				exit(EXIT_SUCCESS);
 			}
 			
-			// 	copy the arguments in array of pointer for the exe function 
-			for(int i =0; i < numberArgs; i++)
-				arguments[i]=args [i];
-			
-			// Creating the child process	
-			pid_t pid= fork(); 
-			
-			
-			// Error 
-			if (pid < 0){
-				error("fork");
-			}
-			// Parent process 
-			else if (pid > 0){
-				parentProcess(pid,background,userInput );
-				background=0;
+			// Checking if the command is jobs
+			else if ((strcmp(arguments[0], "jobs")) == 0){
+				walkList(callback);
 			}
 			
-			// Child process 
 			else{
 				// Load a new program in the child prozess
 				execvp(arguments[0], arguments);
@@ -81,61 +94,68 @@ int main(int argc, char*argv[]){
 				// in the case of failure excex return
 				error("execvp");
 			}
-			
-				
+		 
 		}
 		
-		
-		for(int i =0; i <=numberArgs; i++)
-				free(arguments[i]);
-				
-		free(arguments);
 			
+	}
+	
+		
+	for(int i =0; i <=numberArgs; i++)
+			free(arguments[i]);
+	free(arguments);
+		
 	
 }
 
 //----------------------------------------------------------------------
 
 
-// Muss noch modifiziert werden 
+static int callback(pid_t pid, const char *cmdLine){
+	printf("%d %s\n", pid, cmdLine);
+	return 0;
+}
+
+
 static void zombie (){
+	
 	int bgStatus;
 	pid_t bgpid;
 	
-	//Zombies aufräumen
-			while (1){
-			
-				bgpid=waitpid(-1, &bgStatus,WNOHANG );
-				
-				
-				// status is not available for any existing process --> Continue with printing prompt
-				if(bgpid == 0){
-					break;
-				}
-				// Error occurs --> There isn't an exsting process or error in the execution of the process
-				else if(bgpid < 0){
-					//no child process exists 
-					if (errno == ECHILD)
-						break;
-					//  erro during the process execution 
-					error("waitpid");
-				}
-				
-				//status is available for a background process
-				else{
-					char command[UserInputLength+1];
-					
-					if((removeElement(bgpid,command,UserInputLength+1)) < 0){
-						continue;
-					}
-					
-					if (WIFEXITED(bgStatus)){
-						printf("Exit Status: [%s] = %d\n", command, WEXITSTATUS(bgStatus));
 
-					}
-					
-				}
+		while (1){
+			
+			bgpid=waitpid(-1, &bgStatus,WNOHANG );
+			
+			
+			// status is not available for any existing process --> Continue with printing prompt
+			if(bgpid == 0){
+				break;
 			}
+			// Error occurs --> There isn't an exsting process or error in the execution of the process
+			else if(bgpid < 0){
+				//no child process exists 
+				if (errno == ECHILD)
+					break;
+				//  erro during the process execution 
+				error("waitpid");
+			}
+			
+			//status is available for a background process
+			else{
+				char command[UserInputLength+1];
+				
+				if((removeElement(bgpid,command,UserInputLength+1)) < 0){
+					continue;
+				}
+				
+				if (WIFEXITED(bgStatus)){
+					printf("Exit Status: [%s] = %d\n", command, WEXITSTATUS(bgStatus));
+
+				}
+				
+			}
+		}
 }
 
 static void parentProcess(pid_t pid, int background,char *commandLine){

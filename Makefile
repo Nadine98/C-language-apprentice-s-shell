@@ -1,11 +1,11 @@
-CompilerFlag = -std=c11 -pendantic -Wall -Werror -D_XOPEN_SOURCE=700
+CompilerFlag = -std=c11 -pedantic -Wall -Werror -D_XOPEN_SOURCE=700
 
 .Phony: all clean 
 
 all: clash
 
 clean:
-	rm -f clash clash.o plist.o
+	rm -rf  *.o clash
   
 clash: clash.o plist.o
 	gcc $(CompilerFlag) -o clash clash.o plist.o
