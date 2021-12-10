@@ -104,9 +104,16 @@ int main(int argc, char*argv[]){
 		// Being in the child process 
 		else{
 			
-			// cleaning up the array for commands without arguments --> like ls, clear, ..
-			if(numberArgs==1 && arguments[numberArgs]!=NULL)
-				arguments[numberArgs]=NULL;
+			// cleaning up the array for the next command
+			for(int i =0; i<numberArgs; i++){
+				
+				if(arguments[numberArgs]!=NULL){
+					arguments[numberArgs]=NULL;
+				}
+				else {
+					break;
+				}
+			}
 
 			execvp(arguments[0], arguments);
 			error("execvp");
@@ -219,6 +226,9 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	// Reading from Stdin --> Using maxLength 1337+2 for the valididation of the input length 
 	if (fgets(userInput, UserInputLength+2, stdin) == NULL){
 		if(feof(stdin)>0){
+			
+			if(printf("\n")	< 0)
+				error("printf");
 			exit(EXIT_SUCCESS);
 		}
 		error("fegts");
