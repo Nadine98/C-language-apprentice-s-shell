@@ -9,7 +9,8 @@
 #define UserInputLength 1337 
 #define ArgumentLength 80
 #define MaxArraySize ((UserInputLength/ArgumentLength) +1)
-  
+ 
+// ---------------------------function declarations---------------------
 static void error(char*);
 static void getPrompt();
 static void getArguments(char [MaxArraySize][ArgumentLength], int *, char *);
@@ -125,8 +126,7 @@ int main(int argc, char*argv[]){
 	
 }
 
-//----------------------------------------------------------------------
-
+// ---------------------------function definitions----------------------
 
 static int callback(pid_t pid, const char *cmdLine){
 	printf("%d %s\n", pid, cmdLine);
@@ -167,7 +167,9 @@ static void zombie (){
 				}
 				
 				if (WIFEXITED(bgStatus)){
-					printf("Exit Status: [%s] = %d\n", command, WEXITSTATUS(bgStatus));
+					if (printf("Exit Status: [%s] = %d\n", command, WEXITSTATUS(bgStatus))<0){
+						error ("printf");	
+					}
 
 				}
 				
@@ -187,7 +189,9 @@ static void parentProcess(pid_t pid, int background,char *commandLine){
 		}	
 		
 		if (WIFEXITED(status)){
-			printf("Exit Status: [%s] = %d\n", commandLine, WEXITSTATUS(status));
+			if(printf("Exit Status: [%s] = %d\n", commandLine, WEXITSTATUS(status)) < 0){
+				error("printf");
+			}
 		}
 	}
 	// Background process
@@ -197,7 +201,7 @@ static void parentProcess(pid_t pid, int background,char *commandLine){
 		int x=insertElement(pid, commandLine);
 		
 		if(x==-2){
-			error("insertElement - full memeory");
+			error("insertElement");
 		}
 		
 	}	
@@ -215,7 +219,6 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	// Reading from Stdin --> Using maxLength 1337+2 for the valididation of the input length 
 	if (fgets(userInput, UserInputLength+2, stdin) == NULL){
 		if(feof(stdin)>0){
-			printf("close clash \n");
 			exit(EXIT_SUCCESS);
 		}
 		error("fegts");
@@ -244,7 +247,7 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	}
 	
  
-	// Spiliting up the input 
+	// Splitting up the input 
 	char *temp=strtok(userInput, " \t");
 	if(snprintf(args[numberOfArguments++],ArgumentLength, "%s",temp )< 0){
 		error("snprintf");
@@ -262,7 +265,6 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 				error("fprintf");
 			exit(EXIT_FAILURE);
 		}
-
 	} 
 	
 	*number = numberOfArguments;
@@ -284,7 +286,7 @@ static void getPrompt(){
 
 				dirLength= dirLength*2;
 				dir = realloc(dir,dirLength);
-				if (dir ==NULL)
+				if (dir == NULL)
 					error("realloc");
 		}
 	    
@@ -293,15 +295,17 @@ static void getPrompt(){
 			error("getcwd");
 		}
 	    
-	    	// No problems during the execution of getcwd
-	    	else{
+	    // No problems during the execution of getcwd
+	    else{
 			break;
 		}
 		
 	}
     
 
-	printf("%s: ", dir);
+	if (printf("%s: ", dir)< 0){
+		error("printf");
+	}
 	fflush(stdout);
 	free(dir);
 }
