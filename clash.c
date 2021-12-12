@@ -6,12 +6,12 @@
 #include <sys/wait.h>
 #include "plist.h"
 
-#define UserInputLength 1337 
+#define UserInputLength 1337
 #define ArgumentLength 80
-#define MaxArraySize ((UserInputLength/ArgumentLength) +1)
+#define MaxArraySize (UserInputLength/ArgumentLength)
  
 // ---------------------------function declarations---------------------
-static void error(char*);
+static void error(const char*);
 static void getPrompt();
 static void getArguments(char [MaxArraySize][ArgumentLength], int *, char *);
 static void parentProcess(pid_t ,int ,char *);
@@ -26,7 +26,7 @@ int main(int argc, char*argv[]){
 	
 	char **arguments=(char**)calloc(MaxArraySize,sizeof(arguments)); 
 	if (arguments ==NULL)
-		error("calloc");
+		error("malloc");
 		
 	char userInput [UserInputLength];
 
@@ -38,6 +38,7 @@ int main(int argc, char*argv[]){
 		zombie();
 		getPrompt();
 		getArguments(args,&numberArgs, userInput);
+		
 		
 		
 		// if a blank line appears then continue with the next prompt 
@@ -56,6 +57,7 @@ int main(int argc, char*argv[]){
 			*(c-1)='\0';
 				
 			numberArgs=numberArgs-1;
+			
 		}
 		
 		
@@ -105,12 +107,12 @@ int main(int argc, char*argv[]){
 		else{
 			
 			// cleaning up the array for the next command
+			// if the previous command is longer than the new command
 			for(int i =0; i<numberArgs; i++){
 				
 				if(arguments[numberArgs]!=NULL){
 					arguments[numberArgs]=NULL;
-				}
-				else {
+				}else {
 					break;
 				}
 			}
@@ -119,17 +121,12 @@ int main(int argc, char*argv[]){
 			error("execvp");
 			
 		}
-		
-
-		
 			
 	}
 	
-	for(int i =0; i <=numberArgs; i++)
+	for(int i =0; i <=MaxArraySize ;i++)
 		free(arguments[i]);
 	free(arguments);
-	
-	
 	
 }
 
@@ -218,13 +215,13 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	
 
 	int numberOfArguments=0;
-	char userInput[UserInputLength+2];
+	char userInput[UserInputLength+1];
 	char c;
 	
 	
 
 	// Reading from Stdin --> Using maxLength 1337+2 for the valididation of the input length 
-	if (fgets(userInput, UserInputLength+2, stdin) == NULL){
+	if (fgets(userInput, UserInputLength+1, stdin) == NULL){
 		if(feof(stdin)>0){
 			
 			if(printf("\n")	< 0)
@@ -236,21 +233,27 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	
 	fflush (stdin);	
 	
-	// Input has a size greater than 1337 then the input is too long --> Ignoring the following character
-	if (strlen(userInput)> UserInputLength){
+	//Input length is too long ( > 1337) 
+	if (strlen(userInput)== UserInputLength && userInput[UserInputLength-1]!='\n'){
+		
+		if (fprintf(stderr,"Line is too long\n") < 0)
+			error("fprintf");
 		
 		while((c=getchar()) != '\n' && c!=EOF){
 			continue;
 		}
-		userInput[UserInputLength]='\0';
 		
-	}else if( strlen(userInput)> 1 && strlen(userInput)< UserInputLength) {
-		userInput[strlen(userInput)-1]='\0';
-	}else{
-		numberOfArguments = -1; 
+		numberOfArguments=-2;
 		
 	}
-
+	
+	// Blanc line
+	if (strlen(userInput)<=1){
+		numberOfArguments = -1; 
+	}
+	
+	// Removing the \n
+	userInput[strlen(userInput)-1]='\0';
 
 	if (sprintf(input,"%s", userInput )< 0){
 		error("sprintf");
@@ -278,6 +281,7 @@ static void getArguments(char args[MaxArraySize][ArgumentLength], int *number, c
 	} 
 	
 	*number = numberOfArguments;
+	
 }
 
 
@@ -285,14 +289,15 @@ static void getPrompt(){
 	
     unsigned int dirLength=10;
     char *dir=NULL;
+    char *tmp;
    
  
     while(1){
 		// fetch the directory
-		char *tmp=getcwd(dir,dirLength);
+		 tmp=getcwd(dir,dirLength);
 
 		// Checking if the lenght of the directory is too long for dir 
-		if ((tmp==NULL) && errno == ERANGE){
+		if (tmp==NULL && errno == ERANGE){
 
 				dirLength= dirLength*2;
 				dir = realloc(dir,dirLength);
@@ -316,12 +321,15 @@ static void getPrompt(){
 	if (printf("%s: ", dir)< 0){
 		error("printf");
 	}
-	fflush(stdout);
-	free(dir);
+	
+	if (fflush(stdout)==EOF)
+		error("fflush");
+		
+	free(dir); 
 }
 
 // Error handling
-static void error(char *msg){
+static void error(const char *msg){
 	perror(msg);
 	exit(EXIT_FAILURE);
 }
