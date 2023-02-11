@@ -4,10 +4,6 @@
 
 #include "plist.h"
 
-/* Die Funktionen insertElement() und removeElement() bitte unveraendert lassen!
- * Falls Sie einen Bug in dieser Implementierung finden, melden Sie diesen bitte
- * an bs@lists.ruhr-uni-bochum.de
- */
 
 static struct qel {
 	pid_t pid;
